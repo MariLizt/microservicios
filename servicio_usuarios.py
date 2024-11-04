@@ -14,12 +14,12 @@ usuarios = [
     {"id": 3, "nombre": "María Rodríguez", "email": "maria@email.com"}
 ]
 
-@app.route('/usuarios', methods=['GET'])
+@app.route('/api/usuarios', methods=['GET'])
 def obtener_usuarios():
     """Endpoint para obtener todos los usuarios"""
     return jsonify({"usuarios": usuarios, "total": len(usuarios)})
 
-@app.route('/usuarios/<int:usuario_id>', methods=['GET'])
+@app.route('/api/usuarios/<int:usuario_id>', methods=['GET'])
 def obtener_usuario(usuario_id):
     """Endpoint para obtener un usuario específico por ID"""
     usuario = next((u for u in usuarios if u["id"] == usuario_id), None)
@@ -27,7 +27,7 @@ def obtener_usuario(usuario_id):
         return jsonify({"usuario": usuario})
     return jsonify({"error": "Usuario no encontrado"}), 404
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/usuarios/health', methods=['GET'])
 def healthcheck():
     """Endpoint para verificar el estado del servicio"""
     return jsonify({"status": "healthy", "service": "usuarios"})

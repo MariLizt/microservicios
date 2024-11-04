@@ -20,17 +20,17 @@ def verificar_usuario(usuario_id):
     """Verifica si existe un usuario consultando al servicio de usuarios"""
     try:
         puerto_usuarios = int(os.getenv('USERS_SERVICE_PORT', 5000))
-        response = requests.get(f'http://localhost:{puerto_usuarios}/usuarios/{usuario_id}')
+        response = requests.get(f'http://localhost:{puerto_usuarios}/api/usuarios/{usuario_id}')
         return response.status_code == 200
     except requests.RequestException:
         return False
 
-@app.route('/pedidos', methods=['GET'])
+@app.route('/api/pedidos', methods=['GET'])
 def obtener_pedidos():
     """Endpoint para obtener todos los pedidos"""
     return jsonify({"pedidos": pedidos, "total": len(pedidos)})
 
-@app.route('/pedidos/usuario/<int:usuario_id>', methods=['GET'])
+@app.route('/api/pedidos/usuario/<int:usuario_id>', methods=['GET'])
 def obtener_pedidos_usuario(usuario_id):
     """Endpoint para obtener los pedidos de un usuario específico"""
     if not verificar_usuario(usuario_id):
@@ -43,7 +43,7 @@ def obtener_pedidos_usuario(usuario_id):
         "total_pedidos": len(pedidos_usuario)
     })
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/pedidos/health', methods=['GET'])
 def healthcheck():
     """Endpoint para verificar el estado del servicio"""
     return jsonify({"status": "healthy", "service": "pedidos"})
