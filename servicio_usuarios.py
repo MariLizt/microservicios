@@ -3,6 +3,8 @@ from logging.handlers import NTEventLogHandler
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 import os
+import redis
+import json
 
 # Cargar variables de entorno
 load_dotenv()
@@ -28,13 +30,12 @@ def setup_logging():
 # Usar el logger
 logger = setup_logging()
 
-# Mensaje de logs
-logger.info("Este es un mensaje de información.")
-logger.warning("Este es un mensaje de advertencia.")
-logger.error("Este es un mensaje de error.")
+# Conectar a Redis
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+cache = redis.StrictRedis(host=redis_host, port=redis_port, db=0, decode_responses=True)
 
 app = Flask(__name__)
-logger = setup_logging()
 
 # Datos simulados de usuarios
 usuarios = [
@@ -46,16 +47,47 @@ usuarios = [
 @app.route('/api/usuarios', methods=['GET'])
 def obtener_usuarios():
     logger.info("Solicitando todos los usuarios.")
-    return jsonify({"usuarios": usuarios, "total": len(usuarios)})
+    
+    # Inicializar la lista de usuarios
+    usuarios_respuesta = None
+
+    # Intentar obtener los usuarios de Redis
+    cached_data = cache.get('usuarios')
+    if cached_data:
+        logger.info("Datos obtenidos de la caché.")
+        usuarios_respuesta = json.loads(cached_data)  # Convertir los datos a lista de diccionarios
+    else:
+        logger.info("Datos no encontrados en la caché, recuperando desde base de datos.")
+        usuarios_respuesta = usuarios  # Si no está en caché, usamos los datos simulados
+        # Almacenar en caché por 5 minutos
+        cache.set('usuarios', json.dumps(usuarios_respuesta), ex=60*5)
+
+    return jsonify({"usuarios": usuarios_respuesta, "total": len(usuarios_respuesta)})
 
 @app.route('/api/usuarios/<int:usuario_id>', methods=['GET'])
 def obtener_usuario(usuario_id):
     logger.info(f"Solicitando usuario con ID: {usuario_id}")
-    usuario = next((u for u in usuarios if u["id"] == usuario_id), None)
-    if usuario:
-        return jsonify({"usuario": usuario})
-    logger.warning(f"Usuario no encontrado: {usuario_id}")
-    return jsonify({"error": "Usuario no encontrado"}), 404
+    
+    # Inicializar variable de respuesta
+    usuario_respuesta = None
+
+    # Verificar si el usuario está en caché
+    cached_usuario = cache.get(f'usuario_{usuario_id}')
+    if cached_usuario:
+        logger.info(f"Usuario {usuario_id} obtenido de la caché.")
+        usuario_respuesta = json.loads(cached_usuario)
+    else:
+        # Buscar el usuario en la "base de datos"
+        usuario_respuesta = next((u for u in usuarios if u["id"] == usuario_id), None)
+        if usuario_respuesta:
+            logger.info(f"Usuario {usuario_id} no encontrado en caché, almacenando en caché.")
+            # Almacenar en caché por 5 minutos
+            cache.set(f'usuario_{usuario_id}', json.dumps(usuario_respuesta), ex=60*5)
+        else:
+            logger.warning(f"Usuario no encontrado: {usuario_id}")
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+    return jsonify({"usuario": usuario_respuesta})
 
 @app.route('/api/usuarios/health', methods=['GET'])
 def healthcheck():

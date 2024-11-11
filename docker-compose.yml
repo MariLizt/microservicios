@@ -1,0 +1,21 @@
+services:
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: always
+    # Opcional: configuración persistente (puedes descomentar para persistencia de datos)
+    volumes:
+      - redis-data:/data
+    networks:
+      - redis-net
+
+# Volumen para persistencia de datos (si deseas persistir datos en tu máquina)
+volumes:
+  redis-data:
+
+# Redes personalizadas para que los contenedores puedan comunicarse entre sí
+networks:
+  redis-net:
+    driver: bridge
