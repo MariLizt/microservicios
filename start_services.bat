@@ -12,6 +12,10 @@ echo Docker Compose ha iniciado los servicios en segundo plano.
 REM Espera un momento para asegurar que Redis esté en funcionamiento
 timeout /t 5 /nobreak
 
+REM Inicia el servicio de configuracion
+start cmd /k "cd /d %~dp0 && venv\Scripts\activate && python servicio_configuracion.py"
+
+
 REM Inicia el servicio de usuarios
 start cmd /k "cd /d %~dp0 && venv\Scripts\activate && python servicio_usuarios.py"
 

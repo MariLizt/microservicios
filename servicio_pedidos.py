@@ -51,6 +51,19 @@ pedidos = [
 logger.info("Agregando pedidos")
 
 
+def obtener_configuracion(service_name):
+    """ Obtiene la configuración del servicio centralizado """
+    try:
+        response = requests.get(f"http://localhost:5002/config/{service_name}")  # Cambiar el puerto a 5002
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"No se pudo obtener la configuración para {service_name}.")
+            return None
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error al conectar con el servicio de configuración: {e}")
+        return None
+    
 def verificar_usuario(usuario_id):
     """Verifica si existe un usuario consultando al servicio de usuarios"""
     try:
@@ -80,6 +93,13 @@ def obtener_pedidos():
 
     return jsonify({"pedidos": pedidos, "total": len(pedidos)})
 
+def obtener_pedidos():
+    config = obtener_configuracion("pedidos_service")
+    if config:
+        # Usar la configuración obtenida
+        return jsonify({"message": "Servicio de pedidos funcionando", "config": config}), 200
+    else:
+        return jsonify({"error": "No se pudo obtener la configuración"}), 500
 
 
 @app.route('/api/pedidos/usuario/<int:usuario_id>', methods=['GET'])
