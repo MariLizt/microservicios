@@ -12,11 +12,11 @@ load_dotenv()
 # Configuración del logger
 def setup_logging():
     # Obtener el logger
-    logger = logging.getLogger("AppMicroservicios")
+    logger = logging.getLogger("AppUsuarios")
     logger.setLevel(logging.DEBUG)  # Nivel de log
 
     # Crear el handler para el Visor de Eventos
-    handler = NTEventLogHandler(appname="AppMicroservicios")
+    handler = NTEventLogHandler(appname="AppUsuarios")
 
     # Definir el formato del log
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -43,16 +43,20 @@ usuarios = [
     {"id": 2, "nombre": "Carlos López", "email": "carlos@email.com"},
     {"id": 3, "nombre": "María Rodríguez", "email": "maria@email.com"}
 ]
+logger.info("Agregando pedidos")
+
+
 
 @app.route('/api/usuarios', methods=['GET'])
 def obtener_usuarios():
     logger.info("Solicitando todos los usuarios.")
-    
+
     # Inicializar la lista de usuarios
     usuarios_respuesta = None
 
     # Intentar obtener los usuarios de Redis
     cached_data = cache.get('usuarios')
+
     if cached_data:
         logger.info("Datos obtenidos de la caché.")
         usuarios_respuesta = json.loads(cached_data)  # Convertir los datos a lista de diccionarios
@@ -64,10 +68,12 @@ def obtener_usuarios():
 
     return jsonify({"usuarios": usuarios_respuesta, "total": len(usuarios_respuesta)})
 
+
+
 @app.route('/api/usuarios/<int:usuario_id>', methods=['GET'])
 def obtener_usuario(usuario_id):
     logger.info(f"Solicitando usuario con ID: {usuario_id}")
-    
+
     # Inicializar variable de respuesta
     usuario_respuesta = None
 
@@ -88,6 +94,8 @@ def obtener_usuario(usuario_id):
             return jsonify({"error": "Usuario no encontrado"}), 404
 
     return jsonify({"usuario": usuario_respuesta})
+
+
 
 @app.route('/api/usuarios/health', methods=['GET'])
 def healthcheck():

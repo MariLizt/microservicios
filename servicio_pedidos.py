@@ -1,6 +1,7 @@
 from flask import Flask, jsonify
 from dotenv import load_dotenv
 import os
+import redis
 import requests
 import logging
 from logging.handlers import NTEventLogHandler
@@ -11,11 +12,11 @@ load_dotenv()
 # Configuración del logger
 def setup_logging():
     # Obtener el logger
-    logger = logging.getLogger("AppMicroservicios")
+    logger = logging.getLogger("AppPedidos")
     logger.setLevel(logging.DEBUG)  # Nivel de log
 
     # Crear el handler para el Visor de Eventos
-    handler = NTEventLogHandler(appname="AppMicroservicios")
+    handler = NTEventLogHandler(appname="AppPedidos")
 
     # Definir el formato del log
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -26,13 +27,16 @@ def setup_logging():
 
     return logger
 
+
+
 # Usar el logger
 logger = setup_logging()
 
-# Ejemplo de logs
-logger.info("Este es un mensaje de información.")
-logger.warning("Este es un mensaje de advertencia.")
-logger.error("Este es un mensaje de error.")
+
+# Conectar a Redis
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+cache = redis.StrictRedis(host=redis_host, port=redis_port, db=0, decode_responses=True)
 
 app = Flask(__name__)
 logger = setup_logging()
@@ -44,6 +48,8 @@ pedidos = [
     {"id": 3, "usuario_id": 2, "producto": "Monitor", "cantidad": 1, "total": 299.99},
     {"id": 4, "usuario_id": 3, "producto": "Teclado", "cantidad": 1, "total": 89.99}
 ]
+logger.info("Agregando pedidos")
+
 
 def verificar_usuario(usuario_id):
     """Verifica si existe un usuario consultando al servicio de usuarios"""
@@ -55,11 +61,26 @@ def verificar_usuario(usuario_id):
         logger.error(f"Error al verificar usuario: {e}")
         return False
 
+
+
 @app.route('/api/pedidos', methods=['GET'])
 def obtener_pedidos():
     """Endpoint para obtener todos los pedidos"""
     logger.info("Solicitando todos los pedidos.")
+
+    # Verificar si los pedidos ya están en cache
+    cached_pedidos = cache.get('pedidos')
+    if cached_pedidos:
+        logger.info("Pedidos obtenidos de Redis (cache).")
+        return jsonify({"pedidos": pedidos, "total": len(pedidos)})
+
+    # Si no están en cache, devolver los pedidos y guardarlos en Redis
+    logger.info("Pedidos obtenidos desde base de datos, guardando en Redis.")
+    cache.set('pedidos', str(pedidos))  # Convertir lista a string antes de guardarla en Redis
+
     return jsonify({"pedidos": pedidos, "total": len(pedidos)})
+
+
 
 @app.route('/api/pedidos/usuario/<int:usuario_id>', methods=['GET'])
 def obtener_pedidos_usuario(usuario_id):
@@ -68,7 +89,6 @@ def obtener_pedidos_usuario(usuario_id):
     if not verificar_usuario(usuario_id):
         logger.warning(f"Usuario no encontrado: {usuario_id}")
         return jsonify({"error": "Usuario no encontrado"}), 404
-        
     pedidos_usuario = [p for p in pedidos if p["usuario_id"] == usuario_id]
     return jsonify({
         "usuario_id": usuario_id,
@@ -76,11 +96,15 @@ def obtener_pedidos_usuario(usuario_id):
         "total_pedidos": len(pedidos_usuario)
     })
 
+
+
 @app.route('/api/pedidos/health', methods=['GET'])
 def healthcheck():
     """Endpoint para verificar el estado del servicio"""
     logger.info("Estado del servicio solicitado.")
     return jsonify({"status": "healthy", "service": "pedidos"})
+
+
 
 if __name__ == '__main__':
     puerto = int(os.getenv('ORDERS_SERVICE_PORT', 5001))

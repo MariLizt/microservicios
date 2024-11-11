@@ -25,6 +25,8 @@ $redisStatus = docker ps --filter "name=redis" --filter "status=running" --forma
 
 if ($redisStatus) {
     Write-Host "Redis esta funcionando correctamente." -ForegroundColor Yellow
+    Write-Host "Claves almacenadas en redis:" -ForegroundColor Cyan
+    docker exec redis redis-cli keys *
 } else {
     Write-Host "Redis no esta corriendo o no se encontró el contenedor." -ForegroundColor Red
 }
